@@ -1,0 +1,57 @@
+amcl:
+    ros__parameters:
+      use_sim_time: true
+      base_frame_id: "roomba"
+      odom_frame_id: "odom"
+      global_frame_id: "map"
+      scan_topic: "scan"
+      tf_broadcast: true
+      transform_tolerance: 1.0
+      save_pose_rate: 0.5
+
+      set_initial_pose: true
+      initial_pose:        # The initial pose of the robot in the map frame (x, y, z, yaw)
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        yaw: 0.0
+
+      robot_model_type: "nav2_amcl::DifferentialMotionModel" # "nav_amcl::OmniMotionModel" "nav_amcl::AckermannMotionModel"
+      alpha1: 0.1 # The alpha parameters are used to specify the noise characteristics of the motion model. They represent the amount of noise in the robot's motion and are typically set based on the characteristics of the robot and its environment.
+      alpha2: 0.1 #alpha 2 and alpha 3 are used to specify the noise in the robot's translation, while alpha 1 and alpha 4 are used to specify the noise in the robot's rotation.
+      alpha3: 0.1
+      alpha4: 0.1
+
+      beam_skip_distance: 0.5 # The distance threshold for skipping beams in the laser scan. If a beam is shorter than this distance, it will be skipped during the update step of the particle filter.
+      beam_skip_error_threshold: 0.9
+      beam_skip_threshold: 0.3
+      do_beamskip: false # Whether to enable beam skipping. If true, beams that are shorter than the specified distance threshold will be skipped during the update step of the particle filter. This can help improve the performance of the algorithm in environments with a lot of noise or clutter.
+
+      lambda_short: 0.1 # The lambda_short parameter is used in the laser sensor model to specify the rate of decay for short-range measurements. It represents the probability that a measurement is caused by a short-range obstacle, and is typically set based on the characteristics of the environment and the sensor.
+      laser_likelihood_max_dist: 2.0
+      laser_max_range: 100.0
+      laser_min_range: -1.0
+      laser_model_type: "likelihood_field" # "beam" "likelihood_field" "likelihood_field_prob" "likelihood_field_convolution" "likelihood_field_prob_convolution"
+
+      max_beams: 60 # The maximum number of laser beams to use for the update step of the particle filter. If the laser scan contains more beams than this value, only a subset of the beams will be used for the update step. This can help improve the performance of the algorithm in environments with a large number of laser beams.
+      max_particles: 2000 # The maximum number of particles to use in the particle filter. This parameter controls the trade-off between accuracy and computational efficiency. A higher number of particles can improve the accuracy of the algorithm, but it will also increase the computational cost. The optimal number of particles will depend on the specific application and the characteristics of the environment.
+      min_particles: 500 # The minimum number of particles to use in the particle filter. This parameter is used to prevent the number of particles from dropping too low, which can lead to poor performance and inaccurate localization. If the number of particles falls below this threshold, the algorithm will resample the particles to increase their number.
+
+      pf_err: 0.05 # The pf_err parameter is used to specify the error threshold for the particle filter. It represents the maximum acceptable error in the estimated pose of the robot, and is typically set based on the requirements of the application and the characteristics of the environment. If the error in the estimated pose exceeds this threshold, the algorithm will resample the particles to improve their accuracy.
+      pf_z: 0.99 # The pf_z parameter is used to specify the confidence level for the particle filter. It represents the probability that the true pose of the robot is within the estimated pose, and is typically set based on the requirements of the application and the characteristics of the environment. A higher value for pf_z indicates a higher confidence level, while a lower value indicates a lower confidence level.
+
+      recovery_alpha_fast: 0.1 # The recovery_alpha_fast and recovery_alpha_slow parameters are used to specify the recovery behavior of the particle filter. They represent the rate at which the algorithm will recover from a localization failure, and are typically set based on the requirements of the application and the characteristics of the environment. A higher value for recovery_alpha_fast indicates a faster recovery rate, while a lower value indicates a slower recovery rate.
+      recovery_alpha_slow: 0.1
+
+
+      resample_interval: 1 # The resample_interval parameter is used to specify the interval at which the particle filter will resample the particles. It represents the number of iterations between resampling steps, and is typically set based on the requirements of the application and the characteristics of the environment. A lower value for resample_interval indicates more frequent resampling, while a higher value indicates less frequent resampling.
+      save_pose_rate: 0.5
+      sigma_hit: 0.2
+      transform_tolerance: 1.0 # The transform_tolerance parameter is used to specify the tolerance for the transform between the robot's base frame and the odom frame. It represents the maximum acceptable time difference between the two frames, and is typically set based on the requirements of the application and the characteristics of the environment. If the time difference between the two frames exceeds this threshold, the algorithm will not use the transform for localization.
+      update_min_a: 0.2
+      update_min_d: 0.25
+      z_hit: 0.5
+      z_max: 0.05
+      z_rand: 0.5
+      z_short: 0.05
+      

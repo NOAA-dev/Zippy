@@ -15,8 +15,11 @@ class CMDRelayNode(Node):
         super().__init__("cmd_relay") 
 
         self.get_logger().info("cmd_relay node has been started")
-        self.declare_parameter("wheelseperation", 0.23)
-        self.declare_parameter("wheelradius", 0.05)
+        # wheelseperation is now the skid-steer TRACK WIDTH (left/right wheel
+        # center distance) and wheelradius is the wheel radius - both match
+        # the 4-wheel skid-steer URDF (track_width / wheel_radius there).
+        self.declare_parameter("wheelseperation", 0.5)
+        self.declare_parameter("wheelradius", 0.1)
 
         self.L_ = self.get_parameter("wheelseperation").value
         self.R_ = self.get_parameter("wheelradius").value
@@ -26,8 +29,13 @@ class CMDRelayNode(Node):
         self.theta = 0.0
         self.v = 0.0
         self.w = 0.0
-        self.prev_rightwheel_pose_ = None
-        self.prev_leftwheel_pose_ = None
+        # Skid-steer has two wheels per side; we track each side's previous
+        # wheel position separately, then average left/right deltas below
+        # the same way a diff-drive model treats one wheel per side.
+        self.prev_frontleft_pose_ = None
+        self.prev_frontright_pose_ = None
+        self.prev_rearleft_pose_ = None
+        self.prev_rearright_pose_ = None
         self.prev_time = None
 
         self.conversion_matrix = np.array([[self.R_/2, self.R_/2],
@@ -58,8 +66,16 @@ class CMDRelayNode(Node):
         right_wheel_velocity = wheel_velocities[0][0]
         left_wheel_velocity = wheel_velocities[1][0]
 
+        # Order matches simple_velocity_controller's joints list in
+        # controllers.yaml: frontleft, frontright, rearleft, rearright.
+        # Both wheels on a side get the same commanded velocity (skid-steer).
         wheel_speed_msg = Float64MultiArray()
-        wheel_speed_msg.data = [left_wheel_velocity, right_wheel_velocity]
+        wheel_speed_msg.data = [
+            left_wheel_velocity,
+            right_wheel_velocity,
+            left_wheel_velocity,
+            right_wheel_velocity,
+        ]
 
         self.cmd_vel_publisher_.publish(wheel_speed_msg)
 
@@ -93,19 +109,25 @@ class CMDRelayNode(Node):
     def position_callback(self,msg: JointState):
 
         try:
-            idx_l = msg.name.index("base_left_wheel_joint")
-            idx_r = msg.name.index("base_right_wheel_joint")
+            idx_fl = msg.name.index("base_frontleft_wheel_joint")
+            idx_fr = msg.name.index("base_frontright_wheel_joint")
+            idx_rl = msg.name.index("base_rearleft_wheel_joint")
+            idx_rr = msg.name.index("base_rearright_wheel_joint")
         except ValueError:
             return
-        
-        left_wheel_pose = msg.position[idx_l]
-        right_wheel_pose = msg.position[idx_r]
-        
+
+        frontleft_pose = msg.position[idx_fl]
+        frontright_pose = msg.position[idx_fr]
+        rearleft_pose = msg.position[idx_rl]
+        rearright_pose = msg.position[idx_rr]
+
         current_time = Time.from_msg(msg.header.stamp)
         if self.prev_time is None:
             self.prev_time = current_time
-            self.prev_rightwheel_pose_ = right_wheel_pose
-            self.prev_leftwheel_pose_ = left_wheel_pose
+            self.prev_frontleft_pose_ = frontleft_pose
+            self.prev_frontright_pose_ = frontright_pose
+            self.prev_rearleft_pose_ = rearleft_pose
+            self.prev_rearright_pose_ = rearright_pose
             return
 
         dt = (current_time - self.prev_time).nanoseconds * 1e-9
@@ -114,11 +136,19 @@ class CMDRelayNode(Node):
         if dt <= 0.0:
             return
 
-        delta_right_wheel = right_wheel_pose - self.prev_rightwheel_pose_
-        delta_left_wheel = left_wheel_pose - self.prev_leftwheel_pose_
+        delta_frontleft = frontleft_pose - self.prev_frontleft_pose_
+        delta_frontright = frontright_pose - self.prev_frontright_pose_
+        delta_rearleft = rearleft_pose - self.prev_rearleft_pose_
+        delta_rearright = rearright_pose - self.prev_rearright_pose_
 
-        self.prev_rightwheel_pose_ = right_wheel_pose
-        self.prev_leftwheel_pose_ = left_wheel_pose
+        self.prev_frontleft_pose_ = frontleft_pose
+        self.prev_frontright_pose_ = frontright_pose
+        self.prev_rearleft_pose_ = rearleft_pose
+        self.prev_rearright_pose_ = rearright_pose
+
+        # Average the two wheels on each side, then treat it like diff-drive.
+        delta_left_wheel = (delta_frontleft + delta_rearleft) / 2.0
+        delta_right_wheel = (delta_frontright + delta_rearright) / 2.0
 
         linear_velocity = (self.R_ * (delta_right_wheel + delta_left_wheel) / 2.0) / dt
         angular_velocity = (self.R_ * (delta_right_wheel - delta_left_wheel) / self.L_) / dt

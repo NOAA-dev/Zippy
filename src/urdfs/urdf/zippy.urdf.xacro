@@ -11,28 +11,39 @@
     <xacro:include filename="gazebo_plugin.xacro" />
     <xacro:include filename="ros2_hardwareinterface.xacro" />
 
-    <xacro:property name="zippy_radius" value="0.2" />
-    <xacro:property name="zippy_height" value="0.1" />
-    <xacro:property name="wheel_radius" value="0.05" />
-    <xacro:property name="wheel_thickness" value="0.03" />
-    
+    <xacro:property name="chassis_length" value="0.6" />
+    <xacro:property name="chassis_width" value="0.45" />
+    <xacro:property name="chassis_height" value="0.25" />
+    <xacro:property name="chassis_mass" value="25.0" />
+
+    <xacro:property name="wheel_radius" value="0.1" />
+    <xacro:property name="wheel_thickness" value="0.06" />
+    <xacro:property name="wheel_mass" value="1.5" />
+
+    <!-- Distance between left/right wheel centers and front/rear wheel centers -->
+    <xacro:property name="track_width" value="0.5" />
+    <xacro:property name="wheelbase" value="0.45" />
+
+    <!-- Height of the chassis center above the ground (wheel axle height) -->
+    <xacro:property name="chassis_z" value="${wheel_radius}" />
+
     <link name="zippy">
     </link>
     <link name="base_link">
         <visual>
             <geometry>
-                <cylinder radius="${zippy_radius}" length="${zippy_height}" /> 
+                <box size="${chassis_length} ${chassis_width} ${chassis_height}" />
             </geometry>
-            <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0" />
+            <origin xyz="0 0 ${chassis_z}" rpy="0 0 0" />
             <material name="blue" />
         </visual>
         <collision>
             <geometry>
-                <cylinder radius="${zippy_radius}" length="${zippy_height}" /> 
+                <box size="${chassis_length} ${chassis_width} ${chassis_height}" />
             </geometry>
-            <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0" />
+            <origin xyz="0 0 ${chassis_z}" rpy="0 0 0" />
         </collision>
-        <xacro:cylinder_inertia Mass="10.0" r="${zippy_radius}" h="${zippy_height}" arr_xyz="0 0 ${wheel_radius}" arr_rpy="0 0 0" />
+        <xacro:box_inertia Mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}" arr_xyz="0 0 ${chassis_z}" arr_rpy="0 0 0" />
     </link>
 
     <xacro:macro name="wheel" params="params">
@@ -50,82 +61,70 @@
                 </geometry>
                 <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
             </collision>
-            <xacro:cylinder_inertia Mass="1.0" r="${wheel_radius}" h="${wheel_thickness}" arr_xyz="0 0 0" arr_rpy="${pi/2} 0 0"/>
+            <xacro:cylinder_inertia Mass="${wheel_mass}" r="${wheel_radius}" h="${wheel_thickness}" arr_xyz="0 0 0" arr_rpy="${pi/2} 0 0"/>
         </link>
     </xacro:macro>
-    
-    <xacro:wheel params="right_wheel" />
-    <xacro:wheel params="left_wheel" />
 
+    <xacro:wheel params="front_left_wheel" />
+    <xacro:wheel params="front_right_wheel" />
+    <xacro:wheel params="rear_left_wheel" />
+    <xacro:wheel params="rear_right_wheel" />
 
-    <link name="caster_wheel">
-        <visual>
-            <geometry>
-                <sphere radius="0.025"/>
-            </geometry>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <material name="grey"/>
-        </visual>
-        <collision>
-            <geometry>
-                <sphere radius="0.025"/>
-            </geometry>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-        </collision>
-        <xacro:solid_sphere_inertia Mass="0.5" r="0.025" arr_xyz="0 0 0" arr_rpy="0 0 0"/> 
-    </link>
-
-    <joint name="base_right_wheel_joint" type="continuous">
+    <joint name="base_frontleft_wheel_joint" type="continuous">
         <parent link="base_link"/>
-        <child link="right_wheel"/>
-        <origin xyz="${-zippy_radius/2} ${-zippy_radius/2 - wheel_thickness/2} 0" rpy="0 0 0"/>
+        <child link="front_left_wheel"/>
+        <origin xyz="${wheelbase/2} ${track_width/2} 0" rpy="0 0 0"/>
         <axis xyz="0 1 0"/>
     </joint>
 
-    <joint name="base_left_wheel_joint" type="continuous">
+    <joint name="base_frontright_wheel_joint" type="continuous">
         <parent link="base_link"/>
-        <child link="left_wheel"/>
-        <origin xyz="${-zippy_radius/2} ${zippy_radius/2 + wheel_thickness/2} 0" rpy="0 0 0"/>
+        <child link="front_right_wheel"/>
+        <origin xyz="${wheelbase/2} ${-track_width/2} 0" rpy="0 0 0"/>
         <axis xyz="0 1 0"/>
     </joint>
 
-    <joint name="base_caster_wheel_joint" type="fixed">
+    <joint name="base_rearleft_wheel_joint" type="continuous">
         <parent link="base_link"/>
-        <child link="caster_wheel"/>
-        <origin xyz="${zippy_radius/4} 0 ${-wheel_radius/2}" rpy="0 0 0"/>
+        <child link="rear_left_wheel"/>
+        <origin xyz="${-wheelbase/2} ${track_width/2} 0" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+    <joint name="base_rearright_wheel_joint" type="continuous">
+        <parent link="base_link"/>
+        <child link="rear_right_wheel"/>
+        <origin xyz="${-wheelbase/2} ${-track_width/2} 0" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
     </joint>
 
     <joint name="spine" type="fixed">
         <parent link="zippy"/>
         <child link="base_link"/>
-        <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+        <origin xyz="0 0 ${chassis_z}" rpy="0 0 0"/>
     </joint>
 
-    <gazebo reference="caster_wheel">
-        <mu1 value="0.01" />
-        <mu2 value="0.01" />
-    </gazebo>
+    <!-- Wheels: high longitudinal (rolling-direction) friction, matching the
+         original tuning. Skid-steer relies on lateral wheel scrub to turn,
+         so mu2 could be tuned lower than mu1 for more realistic slip - left
+         as-is here to match the previous friction tuning; revisit if the
+         sim turning behavior looks wrong. -->
+    <xacro:macro name="wheel_friction" params="link">
+        <gazebo reference="${link}">
+            <mu1>1000000000000000.0</mu1>
+            <mu2>1000000000000000.0</mu2>
+            <kp>1000000000000.0</kp>
+            <kd>10.0</kd>
+            <minDepth>0.001</minDepth>
+            <maxVel>0.1</maxVel>
+            <fdir1>1 0 0</fdir1>
+        </gazebo>
+    </xacro:macro>
 
-        <!-- Wheels -->
-    <gazebo reference="left_wheel">
-        <mu1>1000000000000000.0</mu1>
-        <mu2>1000000000000000.0</mu2>
-        <kp>1000000000000.0</kp>
-        <kd>10.0</kd>
-        <minDepth>0.001</minDepth>
-        <maxVel>0.1</maxVel>
-        <fdir1>1 0 0</fdir1>
-    </gazebo>
-
-    <gazebo reference="right_wheel">
-        <mu1>1000000000000000.0</mu1>
-        <mu2>1000000000000000.0</mu2>
-        <kp>1000000000000.0</kp>
-        <kd>10.0</kd>
-        <minDepth>0.001</minDepth>
-        <maxVel>0.1</maxVel>
-        <fdir1>1 0 0</fdir1>
-    </gazebo>
+    <xacro:wheel_friction link="front_left_wheel" />
+    <xacro:wheel_friction link="front_right_wheel" />
+    <xacro:wheel_friction link="rear_left_wheel" />
+    <xacro:wheel_friction link="rear_right_wheel" />
 
     <gazebo>
         <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
@@ -139,5 +138,5 @@
         </plugin>
         <plugin name='gz::sim::systems::Imu' filename='gz-sim-imu-system'/>
     </gazebo>
-    
+
 </robot>

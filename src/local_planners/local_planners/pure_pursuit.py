@@ -38,17 +38,17 @@ class PurePursuitNode(Node):
         self.last_nearest_index = 0
         self.path_sub = self.create_subscription(Path, "/path", self.path_callback, path_qos)
 
-        # ---- tunable parameters ----
-        self.declare_parameter("lookahead_distance", 0.5)
-        self.declare_parameter("min_lookahead", 0.3)
-        self.declare_parameter("max_lookahead", 1.0)
+        self.declare_parameter("lookahead_distance", 0.8)
+        self.declare_parameter("min_lookahead", 0.5)
+        self.declare_parameter("max_lookahead", 1.5)
         self.declare_parameter("k_lookahead", 0.3)
         self.declare_parameter("base_velocity", 0.5)
         self.declare_parameter("min_velocity", 0.1)
-        self.declare_parameter("max_angular_vel", 1.3)
+        self.declare_parameter("max_angular_vel", 1.0)
         self.declare_parameter("tf_timeout_sec", 0.5)
-        self.declare_parameter("avoid_start_distance", 0.8)
-        self.declare_parameter("avoid_stop_distance", 0.3)
+        
+        self.declare_parameter("avoid_start_distance", 1.0)
+        self.declare_parameter("avoid_stop_distance", 0.4)
         self.declare_parameter("clear_default", 10.0)
 
         self.lookahead_distance = self.get_parameter("lookahead_distance").value

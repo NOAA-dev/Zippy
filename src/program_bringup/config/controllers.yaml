@@ -14,13 +14,15 @@ controller_manager:
 simple_velocity_controller:
   ros__parameters:
     joints:
-      - "base_left_wheel_joint"
-      - "base_right_wheel_joint"
+      - "base_frontleft_wheel_joint"
+      - "base_frontright_wheel_joint"
+      - "base_rearleft_wheel_joint"
+      - "base_rearright_wheel_joint"
     
 diff_drive_controller:
   ros__parameters:
-    left_wheel_names: ["base_left_wheel_joint"]
-    right_wheel_names: ["base_right_wheel_joint"]
+    left_wheel_names: ["base_frontleft_wheel_joint", "base_rearleft_wheel_joint"]
+    right_wheel_names: ["base_frontright_wheel_joint", "base_rearright_wheel_joint"]
     wheel_separation: 0.23
     wheel_radius: 0.05
     cmd_vel_timeout: 0.5

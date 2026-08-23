@@ -36,14 +36,18 @@ class AStarNode(Node):
         path_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         self.computing = False
 
-        self.declare_parameter("wheelseperation", 0.23)
-        self.declare_parameter("wheelradius", 0.05)
-        self.declare_parameter("robotradius", 0.2)
+        self.declare_parameter("wheelseperation", 0.5)
+        self.declare_parameter("wheelradius", 0.1)
+        self.declare_parameter("footprintlength", 0.6)
+        self.declare_parameter("footprintwidth", 0.45)
+        self.declare_parameter("footprintmargin", 0.075)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value
         self.R_ = self.get_parameter("wheelradius").value
-        self.robot_radius = self.get_parameter("robotradius").value
+        self.footprint_length = self.get_parameter("footprintlength").value
+        self.footprint_width = self.get_parameter("footprintwidth").value
+        self.footprint_margin = self.get_parameter("footprintmargin").value
 
         # system parameters
         self.dt_ = 0.5
@@ -135,6 +139,40 @@ class AStarNode(Node):
 
         self.get_logger().info(f"Map loaded: {self.Grid_.shape}, "f"resolution: {self.map_resolution_}, "f"origin: ({self.map_origin_x_}, {self.map_origin_y_})")
 
+        self._footprint_local_pts = self._build_footprint_points(self.footprint_length, self.footprint_width, self.footprint_margin, self.map_resolution_)
+
+    def _build_footprint_points(self, length, width, margin, resolution):
+        half_l = length / 2.0 + margin
+        half_w = width / 2.0 + margin
+        step = max(resolution / 2.0, 0.01)
+
+        corners = [(half_l, half_w), (half_l, -half_w), (-half_l, -half_w), (-half_l, half_w)]
+        pts = []
+        for i in range(4):
+            x0, y0 = corners[i]
+            x1, y1 = corners[(i + 1) % 4]
+            seg_len = math.hypot(x1 - x0, y1 - y0)
+            n = max(int(seg_len / step), 1)
+            for k in range(n):
+                t = k / n
+                pts.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
+
+        return np.array(pts, dtype=np.float64)
+
+    def _footprint_grid_cells(self, x, y, theta):
+        """Rotate/translate the footprint sample points to the given pose and
+        return their grid indices, plus a bounds mask."""
+        c, s = np.cos(theta), np.sin(theta)
+        local = self._footprint_local_pts
+        wx = x + local[:, 0] * c - local[:, 1] * s
+        wy = y + local[:, 0] * s + local[:, 1] * c
+
+        gx = ((wx - self.map_origin_x_) / self.map_resolution_).astype(np.int64)
+        gy = ((wy - self.map_origin_y_) / self.map_resolution_).astype(np.int64)
+
+        in_bounds = (gx >= 0) & (gy >= 0) & (gx < self.Grid_.shape[1]) & (gy < self.Grid_.shape[0])
+        return gx, gy, in_bounds
+
     def check_tf(self):
         try:
             transform = self.tf_buffer.lookup_transform("map", "zippy", rclpy.time.Time(), timeout=Duration(seconds=0.2))
@@ -192,8 +230,8 @@ class AStarNode(Node):
         return cost
 
     def discretize(self, x_grid, y_grid, theta):
-        x_idx = int((x_grid - self.map_origin_x_) / 0.1)
-        y_idx = int((y_grid - self.map_origin_y_) / 0.1)
+        x_idx = int((x_grid - self.map_origin_x_) / self.map_resolution_)
+        y_idx = int((y_grid - self.map_origin_y_) / self.map_resolution_)
         theta_bins = 36
         theta_normalized = (theta + np.pi) % (2 * np.pi)
 
@@ -226,39 +264,40 @@ class AStarNode(Node):
 
         return x_new, y_new, theta_new
 
-    def collision_check(self, x, y):
-        gx, gy = self.world_to_grid(x, y)
-        if gx < 0 or gy < 0 or gx >= self.Grid_.shape[1] or gy >= self.Grid_.shape[0]:
+    def collision_check(self, x, y, theta):
+        gx0, gy0 = self.world_to_grid(x, y)
+        if gx0 < 0 or gy0 < 0 or gx0 >= self.Grid_.shape[1] or gy0 >= self.Grid_.shape[0]:
             return True
-        if self.Grid_[gy, gx] != 0:
+        if self.Grid_[gy0, gx0] != 0:
             return True
-        theta_ = np.linspace(0, 2 * np.pi, num=16, endpoint=False)
-        for angle in theta_:
-            x_offset = (self.robot_radius + 0.075) * np.cos(angle)
-            y_offset = (self.robot_radius + 0.075) * np.sin(angle)
-            gx_offset, gy_offset = self.world_to_grid(x + x_offset, y + y_offset)
 
-            if gx_offset < 0 or gy_offset < 0 or gx_offset >= self.Grid_.shape[1] or gy_offset >= self.Grid_.shape[0]:
-                return True
+        gx, gy, in_bounds = self._footprint_grid_cells(x, y, theta)
+        if not np.all(in_bounds):
+            return True
 
-            if self.Grid_[gy_offset, gx_offset] != 0:
-                return True
+        if np.any(self.Grid_[gy[in_bounds], gx[in_bounds]] != 0):
+            return True
 
         return False
 
-    def clearance_cost(self, x, y):
-        gx, gy = self.world_to_grid(x, y)
-        if gx < 0 or gy < 0 or gx >= self.Grid_.shape[1] or gy >= self.Grid_.shape[0]:
+    def clearance_cost(self, x, y, theta):
+        gx0, gy0 = self.world_to_grid(x, y)
+        if gx0 < 0 or gy0 < 0 or gx0 >= self.Grid_.shape[1] or gy0 >= self.Grid_.shape[0]:
             return np.inf
-        if self.Grid_[gy, gx] != 0:
+        if self.Grid_[gy0, gx0] != 0:
+            return np.inf
+        
+        gx, gy, in_bounds = self._footprint_grid_cells(x, y, theta)
+        if not np.any(in_bounds):
             return np.inf
 
-        clearance = self.clearance_map[gy, gx]
+        clearance = self.clearance_map[gy[in_bounds], gx[in_bounds]]
+        min_clearance = float(np.min(clearance)) if clearance.size else 0.0
 
-        if clearance < self.robot_radius / self.map_resolution_:
+        if min_clearance <= 0.0:
             return np.inf
 
-        return 4 / clearance
+        return 4.0 / min_clearance
 
     def A_star(self, start, goal):
         self.computing = True
@@ -308,7 +347,7 @@ class AStarNode(Node):
                     x_new, y_new, theta_new = self.kinematic_model(current.x, current.y, current.theta, v, w)
                     theta_new = np.arctan2(np.sin(theta_new), np.cos(theta_new))
 
-                    collision = self.collision_check(x_new, y_new)
+                    collision = self.collision_check(x_new, y_new, theta_new)
                     if collision == True:
                         continue
 
@@ -319,7 +358,7 @@ class AStarNode(Node):
                         reverse_cost = 0
                         state = 1
 
-                    c = self.clearance_cost(x_new, y_new)
+                    c = self.clearance_cost(x_new, y_new, theta_new)
                     h_cost = max(self.heuristic_cost(x_new, y_new), self.euler_plus_heading(x_new, y_new, theta_new))
                     g_cost = current.g + self.dt_ * (abs(v) + abs(w)) + reverse_cost + c
 

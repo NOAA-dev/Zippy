@@ -21,6 +21,7 @@
     <node pkg="slam_toolbox" exec="sync_slam_toolbox_node" name="slam_toolbox" output="screen">
         <param from="$(var slam_config)"/>
         <param name="use_sim_time" value="$(var use_sim_time)"/>
+        <remap from="/map" to="/slam_internal_map"/>
     </node>
 
     <node pkg="nav2_lifecycle_manager" exec="lifecycle_manager" name="lifecycle_manager_localization" output="screen">

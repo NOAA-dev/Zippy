@@ -50,7 +50,7 @@ class AStarNode(Node):
         self.footprint_margin = self.get_parameter("footprintmargin").value
 
         # system parameters
-        self.dt_ = 0.5
+        self.dt_ = 1.0
 
         self.velocity_primitives_ = [
             0.8,
@@ -99,7 +99,7 @@ class AStarNode(Node):
 
         if pgm_map is None:
             raise RuntimeError(f"Could not load map: {map_path}")
-
+        pgm_map = cv2.flip(pgm_map, 0)
         # Convert Nav2/ROS PGM map into planner occupancy map
         # PGM convention:
         #   254 = free
@@ -193,7 +193,7 @@ class AStarNode(Node):
         visited_set = set()
         heapq.heappush(pq, (0.0, goal_x, goal_y))
         h_map[goal_y, goal_x] = 0.0
-        motions = [(1, 0, 1), (-1, 0, 1), (0, 1, 1), (0, -1, 1),(1, 1, np.sqrt(2)), (-1, -1, np.sqrt(2)), (1, -1, np.sqrt(2)), (-1, 1, np.sqrt(2))]
+        motions = [(1, 0, 0.05), (-1, 0, 0.05), (0, 1, 0.05), (0, -1, 0.05),(1, 1, np.sqrt(2) * 0.05), (-1, -1, np.sqrt(2) * 0.05), (1, -1, np.sqrt(2) * 0.05), (-1, 1, np.sqrt(2) * 0.05)]
         pos_x, pos_y = self.world_to_grid(self.x_pos, self.y_pos)
 
         while pq:
@@ -323,13 +323,13 @@ class AStarNode(Node):
 
             self.closed_set_.add(current_key)
             expansions += 1
-            if expansions >= 1000:
+            if expansions >= 5000:
                 break
 
             dist_to_goal = math.hypot(current.x - goal[0], current.y - goal[1])
             heading_err = abs(math.atan2(math.sin(current.theta - goal[2]), math.cos(current.theta - goal[2])))
 
-            if dist_to_goal < 0.15 and heading_err < math.radians(20):
+            if dist_to_goal < 0.5 and heading_err < math.radians(20):
                 self.get_logger().info("Goal reached!")
                 self.get_logger().info(f"Expansions: {expansions}, Open set size: {len(self.open_set_)}, Closed set size: {len(self.closed_set_)}")
 

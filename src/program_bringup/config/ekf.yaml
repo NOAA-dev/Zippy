@@ -7,7 +7,7 @@ ekf_filter_node:
 
       map_frame: map         
       odom_frame: odom          
-      base_link_frame: roomba 
+      base_link_frame: zippy 
       world_frame: odom          
 
       

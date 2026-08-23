@@ -74,7 +74,7 @@ class PurePursuitNode(Node):
     # ------------------------------------------------------------------
     def check_tf(self):
         try:
-            transform = self.tf_buffer.lookup_transform("map", "roomba", rclpy.time.Time(), timeout=Duration(seconds=0.2))
+            transform = self.tf_buffer.lookup_transform("map", "zippy", rclpy.time.Time(), timeout=Duration(seconds=0.2))
             self.x_pos = transform.transform.translation.x
             self.y_pos = transform.transform.translation.y
             q = transform.transform.rotation

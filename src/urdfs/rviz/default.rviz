@@ -79,7 +79,7 @@ Visualization Manager:
           Value: true
         right_wheel:
           Value: true
-        roomba:
+        zippy:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -89,7 +89,7 @@ Visualization Manager:
       Tree:
         map:
           odom:
-            roomba:
+            zippy:
               base_link:
                 camera_link:
                   camera_link_optical:
@@ -168,7 +168,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        roomba:
+        zippy:
           Alpha: 1
           Show Axes: false
           Show Trail: false

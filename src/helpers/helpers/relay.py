@@ -35,7 +35,7 @@ class CMDRelayNode(Node):
         
         self.odom_msg = Odometry()
         self.odom_msg.header.frame_id = "odom"
-        self.odom_msg.child_frame_id = "roomba"
+        self.odom_msg.child_frame_id = "zippy"
 
         self.joy_subscriber_ = self.create_subscription(Twist,"/cmd_vel_unstamped",self.genrate_cmd_vel,10)
         self.joy_in_subscriber_ = self.create_subscription(TwistStamped,"/joystick_input/stamped",self.joy_in_callback,10)

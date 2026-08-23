@@ -7,9 +7,9 @@
     <let name="map_path"
          value="$(find-pkg-share program_bringup)/maps/small_house/map.yaml"/>
 
-    <!-- AMCL configuration -->
-    <let name="amcl_params"
-         value="$(find-pkg-share program_bringup)/config/amcl.yaml"/>
+    <!-- SLAM configuration -->
+    <let name="slam_config"
+         value="$(find-pkg-share program_bringup)/config/slam_toolbox.yaml"/>
 
 
     <node pkg="nav2_map_server" exec="map_server" name="map_server" output="screen">
@@ -18,12 +18,13 @@
         <param name="use_sim_time" value="$(var use_sim_time)"/>
     </node>
 
-    <node pkg="nav2_amcl" exec="amcl" name="amcl" output="screen">
-        <param from="$(var amcl_params)"/>
+    <node pkg="slam_toolbox" exec="sync_slam_toolbox_node" name="slam_toolbox" output="screen">
+        <param from="$(var slam_config)"/>
+        <param name="use_sim_time" value="$(var use_sim_time)"/>
     </node>
 
     <node pkg="nav2_lifecycle_manager" exec="lifecycle_manager" name="lifecycle_manager_localization" output="screen">
-        <param name="node_names" value="['map_server', 'amcl']"/>
+        <param name="node_names" value="['map_server', 'slam_toolbox']"/>
         <param name="use_sim_time" value="$(var use_sim_time)"/>
         <param name="autostart" value="true"/>
         <param name="bond_timeout" value="10.0"/>

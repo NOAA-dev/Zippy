@@ -39,11 +39,18 @@ class AStarNode(Node):
         self.declare_parameter("wheelseperation", 0.23)
         self.declare_parameter("wheelradius", 0.05)
         self.declare_parameter("robotradius", 0.2)
+        # 1000 was tuned for a coarse grid and is nowhere near enough for a
+        # 500x500 (0.05 m/cell) map with a hybrid-state (x, y, theta) search
+        # space - it was the other main cause of spurious "No path found"
+        # results on longer/more maneuver-heavy paths. Made tunable instead
+        # of hardcoded, with a much higher default.
+        self.declare_parameter("maxexpansions", 20000)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value
         self.R_ = self.get_parameter("wheelradius").value
         self.robot_radius = self.get_parameter("robotradius").value
+        self.max_expansions_ = self.get_parameter("maxexpansions").value
 
         # system parameters
         self.dt_ = 0.5
@@ -137,7 +144,7 @@ class AStarNode(Node):
 
     def check_tf(self):
         try:
-            transform = self.tf_buffer.lookup_transform("map", "roomba", rclpy.time.Time(), timeout=Duration(seconds=0.2))
+            transform = self.tf_buffer.lookup_transform("map", "zippy", rclpy.time.Time(), timeout=Duration(seconds=0.2))
 
             self.x_pos = transform.transform.translation.x
             self.y_pos = transform.transform.translation.y
@@ -149,6 +156,18 @@ class AStarNode(Node):
             pass
 
     def dijkstra_heuristic(self, goal_x, goal_y):
+        # NOTE: this used to break out of the search as soon as the robot's
+        # start cell was popped. That left every cell NOT on the direct
+        # goal->start corridor (e.g. cells behind a corner, inside a doorway
+        # manoeuvre, or in any detour needed to get around an obstacle) with
+        # h_map == inf. Since A_star() takes max(heuristic_cost, ...), any
+        # expansion landing in one of those un-visited cells got an infinite
+        # f-cost and was starved out of the open set forever, which is what
+        # was producing "No path found" on anything but a short, direct,
+        # obstacle-free path. We now flood-fill the full free-space instead,
+        # which is still cheap (single 8-connected Dijkstra over the grid,
+        # <1s even on a 500x500 map) and guarantees every reachable cell has
+        # a correct, finite heuristic.
         h_map = np.full(self.Grid_.shape, np.inf, dtype=np.float32)
 
         pq = []
@@ -156,16 +175,12 @@ class AStarNode(Node):
         heapq.heappush(pq, (0.0, goal_x, goal_y))
         h_map[goal_y, goal_x] = 0.0
         motions = [(1, 0, 1), (-1, 0, 1), (0, 1, 1), (0, -1, 1),(1, 1, np.sqrt(2)), (-1, -1, np.sqrt(2)), (1, -1, np.sqrt(2)), (-1, 1, np.sqrt(2))]
-        pos_x, pos_y = self.world_to_grid(self.x_pos, self.y_pos)
 
         while pq:
             cost, x, y = heapq.heappop(pq)
             if (x, y) in visited_set:
                 continue
             visited_set.add((x, y))
-
-            if (x, y) == (pos_x, pos_y):
-                break
 
             for dx, dy, move_cost in motions:
                 nx, ny = x + dx, y + dy
@@ -284,7 +299,10 @@ class AStarNode(Node):
 
             self.closed_set_.add(current_key)
             expansions += 1
-            if expansions >= 1000:
+            if expansions >= self.max_expansions_:
+                self.get_logger().warn(
+                    f"A* hit the expansion cap ({self.max_expansions_}) before reaching the goal."
+                )
                 break
 
             dist_to_goal = math.hypot(current.x - goal[0], current.y - goal[1])

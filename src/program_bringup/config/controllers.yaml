@@ -31,7 +31,7 @@ diff_drive_controller:
     angular.z.min_velocity: -1.57
     enable_odom_tf: true
     odom_frame_id: "odom"
-    base_frame_id: "roomba"
+    base_frame_id: "zippy"
     publish_rate: 50.0
     use_stamped_vel: false
     # pose_covariance_diagonal: [0.001, 0.0, 0.0, 0.0, 0.0, 0.03]

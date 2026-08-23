@@ -7,7 +7,7 @@ Subscribes to:
   - /discarded_map     (custom_interfaces/msg/Validatedmap)
   - /odometry/filtered (nav_msgs/msg/Odometry)
 
-Writes three separate CSVs under ~/roomba (all sharing one run timestamp so
+Writes three separate CSVs under ~/zippy (all sharing one run timestamp so
 they're easy to correlate):
 
   1. odom_log_<stamp>.csv
@@ -45,7 +45,7 @@ class DataLoggerNode(Node):
     def __init__(self):
         super().__init__("data_logger_node")
 
-        self.declare_parameter("output_dir", os.path.expanduser("~/roomba/collected_data"))
+        self.declare_parameter("output_dir", os.path.expanduser("~/zippy/collected_data"))
         output_dir = self.get_parameter("output_dir").get_parameter_value().string_value
         os.makedirs(output_dir, exist_ok=True)
 

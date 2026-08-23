@@ -7,7 +7,7 @@ Visualizes the three CSVs produced by data_logger_node.py:
   - validated_map_log_<stamp>.csv
   - map_data_log_<stamp>.csv
 
-Default usage (looks in ~/roomba, grabs the most recent run automatically):
+Default usage (looks in ~/zippy, grabs the most recent run automatically):
     python3 visualize_data_logs.py
 
 Pick a specific run by its timestamp suffix:
@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 
-DEFAULT_DIR = os.path.expanduser("~/roomba/collected_data")
+DEFAULT_DIR = os.path.expanduser("~/zippy/collected_data")
 
 
 # ----------------------------------------------------------------------
@@ -113,7 +113,7 @@ def make_trajectory_figure(tf_df, stamp):
     ax.plot(tf_df["x"], tf_df["y"], "-", linewidth=1, color="tab:blue", label="trajectory")
     ax.scatter(tf_df["x"].iloc[0], tf_df["y"].iloc[0], color="green", zorder=5, label="start")
     ax.scatter(tf_df["x"].iloc[-1], tf_df["y"].iloc[-1], color="red", zorder=5, label="end")
-    ax.set_title("Robot trajectory (map -> roomba TF)")
+    ax.set_title("Robot trajectory (map -> zippy TF)")
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
     ax.axis("equal")

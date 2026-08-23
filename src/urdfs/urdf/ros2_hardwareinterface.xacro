@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="roomba" xmlns:xacro="https://www.ros.org/wiki/xacro">
+<robot name="zippy" xmlns:xacro="https://www.ros.org/wiki/xacro">
 
     <ros2_control name="GazeboSystem" type="system">
         <hardware>

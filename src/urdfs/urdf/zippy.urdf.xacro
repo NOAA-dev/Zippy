@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="roomba" xmlns:xacro="https://www.ros.org/wiki/xacro">
+<robot name="zippy" xmlns:xacro="https://www.ros.org/wiki/xacro">
 
     <xacro:arg name="controllers_config_path" default="" />
 
@@ -11,28 +11,28 @@
     <xacro:include filename="gazebo_plugin.xacro" />
     <xacro:include filename="ros2_hardwareinterface.xacro" />
 
-    <xacro:property name="roomba_radius" value="0.2" />
-    <xacro:property name="roomba_height" value="0.1" />
+    <xacro:property name="zippy_radius" value="0.2" />
+    <xacro:property name="zippy_height" value="0.1" />
     <xacro:property name="wheel_radius" value="0.05" />
     <xacro:property name="wheel_thickness" value="0.03" />
     
-    <link name="roomba">
+    <link name="zippy">
     </link>
     <link name="base_link">
         <visual>
             <geometry>
-                <cylinder radius="${roomba_radius}" length="${roomba_height}" /> 
+                <cylinder radius="${zippy_radius}" length="${zippy_height}" /> 
             </geometry>
             <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0" />
             <material name="blue" />
         </visual>
         <collision>
             <geometry>
-                <cylinder radius="${roomba_radius}" length="${roomba_height}" /> 
+                <cylinder radius="${zippy_radius}" length="${zippy_height}" /> 
             </geometry>
             <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0" />
         </collision>
-        <xacro:cylinder_inertia Mass="10.0" r="${roomba_radius}" h="${roomba_height}" arr_xyz="0 0 ${wheel_radius}" arr_rpy="0 0 0" />
+        <xacro:cylinder_inertia Mass="10.0" r="${zippy_radius}" h="${zippy_height}" arr_xyz="0 0 ${wheel_radius}" arr_rpy="0 0 0" />
     </link>
 
     <xacro:macro name="wheel" params="params">
@@ -78,25 +78,25 @@
     <joint name="base_right_wheel_joint" type="continuous">
         <parent link="base_link"/>
         <child link="right_wheel"/>
-        <origin xyz="${-roomba_radius/2} ${-roomba_radius/2 - wheel_thickness/2} 0" rpy="0 0 0"/>
+        <origin xyz="${-zippy_radius/2} ${-zippy_radius/2 - wheel_thickness/2} 0" rpy="0 0 0"/>
         <axis xyz="0 1 0"/>
     </joint>
 
     <joint name="base_left_wheel_joint" type="continuous">
         <parent link="base_link"/>
         <child link="left_wheel"/>
-        <origin xyz="${-roomba_radius/2} ${roomba_radius/2 + wheel_thickness/2} 0" rpy="0 0 0"/>
+        <origin xyz="${-zippy_radius/2} ${zippy_radius/2 + wheel_thickness/2} 0" rpy="0 0 0"/>
         <axis xyz="0 1 0"/>
     </joint>
 
     <joint name="base_caster_wheel_joint" type="fixed">
         <parent link="base_link"/>
         <child link="caster_wheel"/>
-        <origin xyz="${roomba_radius/4} 0 ${-wheel_radius/2}" rpy="0 0 0"/>
+        <origin xyz="${zippy_radius/4} 0 ${-wheel_radius/2}" rpy="0 0 0"/>
     </joint>
 
     <joint name="spine" type="fixed">
-        <parent link="roomba"/>
+        <parent link="zippy"/>
         <child link="base_link"/>
         <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
     </joint>

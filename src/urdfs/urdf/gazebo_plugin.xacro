@@ -15,7 +15,7 @@
             <wheel_separation>0.23</wheel_separation>
             <wheel_radius>0.05</wheel_radius>
             <frame_id>odom</frame_id>
-            <child_frame_id>roomba</child_frame_id>
+            <child_frame_id>zippy</child_frame_id>
         </plugin>
     </gazebo>
 

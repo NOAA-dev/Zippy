@@ -41,7 +41,7 @@ class AStarNode(Node):
         self.declare_parameter("footprintlength", 0.6)
         self.declare_parameter("footprintwidth", 0.45)
         self.declare_parameter("footprintmargin", 0.075)
-        self.declare_parameter("search_resolution", 0.25)
+        self.declare_parameter("search_resolution", 0.2)
         self.declare_parameter("search_theta_bins", 20)
 
         # bot parameters
@@ -56,7 +56,7 @@ class AStarNode(Node):
         self.search_theta_bins_ = self.get_parameter("search_theta_bins").value
 
         # system parameters
-        self.dt_ = 0.7
+        self.dt_ = 0.6
 
         self.velocity_primitives_ = [
             0.8,
@@ -117,26 +117,15 @@ class AStarNode(Node):
         #   100 = obstacle
 
         self.Grid_ = np.zeros_like(pgm_map, dtype=np.uint8)
-
         # Treat anything that is not clearly free as an obstacle
         self.Grid_[pgm_map < 250] = 100
-
         # Obstacle inflation
         obstacle_mask = (self.Grid_ == 100).astype(np.uint8)
-
         kernel = np.ones((3, 3), np.uint8)
-        dilated_mask = cv2.dilate(
-            obstacle_mask,
-            kernel,
-            iterations=1
-        )
-
+        dilated_mask = cv2.dilate(obstacle_mask,kernel,iterations=1)
         self.Grid_[dilated_mask == 1] = 100
-
         # Clearance map
-        self.clearance_map = distance_transform_edt(
-            self.Grid_ == 0
-        )
+        self.clearance_map = distance_transform_edt(self.Grid_ == 0)
 
         # EXACT values from map.yaml
         self.map_resolution_ = 0.05

@@ -15,9 +15,6 @@ class CMDRelayNode(Node):
         super().__init__("cmd_relay") 
 
         self.get_logger().info("cmd_relay node has been started")
-        # wheelseperation is now the skid-steer TRACK WIDTH (left/right wheel
-        # center distance) and wheelradius is the wheel radius - both match
-        # the 4-wheel skid-steer URDF (track_width / wheel_radius there).
         self.declare_parameter("wheelseperation", 0.5)
         self.declare_parameter("wheelradius", 0.1)
 
@@ -29,9 +26,7 @@ class CMDRelayNode(Node):
         self.theta = 0.0
         self.v = 0.0
         self.w = 0.0
-        # Skid-steer has two wheels per side; we track each side's previous
-        # wheel position separately, then average left/right deltas below
-        # the same way a diff-drive model treats one wheel per side.
+
         self.prev_frontleft_pose_ = None
         self.prev_frontright_pose_ = None
         self.prev_rearleft_pose_ = None
@@ -66,9 +61,6 @@ class CMDRelayNode(Node):
         right_wheel_velocity = wheel_velocities[0][0]
         left_wheel_velocity = wheel_velocities[1][0]
 
-        # Order matches simple_velocity_controller's joints list in
-        # controllers.yaml: frontleft, frontright, rearleft, rearright.
-        # Both wheels on a side get the same commanded velocity (skid-steer).
         wheel_speed_msg = Float64MultiArray()
         wheel_speed_msg.data = [
             left_wheel_velocity,

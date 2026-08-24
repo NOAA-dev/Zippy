@@ -40,9 +40,9 @@ class AStarNode(Node):
         self.declare_parameter("wheelradius", 0.1)
         self.declare_parameter("footprintlength", 0.6)
         self.declare_parameter("footprintwidth", 0.45)
-        self.declare_parameter("footprintmargin", 0.075)
-        self.declare_parameter("search_resolution", 0.2)
-        self.declare_parameter("search_theta_bins", 20)
+        self.declare_parameter("footprintmargin", 0.05)
+        self.declare_parameter("search_resolution", 0.4)
+        self.declare_parameter("search_theta_bins", 10)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value
@@ -106,20 +106,12 @@ class AStarNode(Node):
         if pgm_map is None:
             raise RuntimeError(f"Could not load map: {map_path}")
         pgm_map = cv2.flip(pgm_map, 0)
-        # Convert Nav2/ROS PGM map into planner occupancy map
-        # PGM convention:
-        #   254 = free
-        #     0 = occupied
-        #   ~205 = unknown
-        #
-        # Planner convention:
-        #     0 = free
-        #   100 = obstacle
 
-        self.Grid_ = np.zeros_like(pgm_map, dtype=np.uint8)
-        # Treat anything that is not clearly free as an obstacle
-        self.Grid_[pgm_map < 250] = 100
-        # Obstacle inflation
+        self.Grid_ = np.zeros_like(pgm_map, dtype=np.int8)
+        # 0 = free, 100 = known obstacle, -1 = unknown
+        self.Grid_[(pgm_map >= 10) & (pgm_map < 250)] = -1
+        self.Grid_[pgm_map < 10] = 100
+        # Obstacle inflation (only known obstacles get inflated, not unknown space)
         obstacle_mask = (self.Grid_ == 100).astype(np.uint8)
         kernel = np.ones((3, 3), np.uint8)
         dilated_mask = cv2.dilate(obstacle_mask,kernel,iterations=1)
@@ -317,7 +309,7 @@ class AStarNode(Node):
             dist_to_goal = math.hypot(current.x - goal[0], current.y - goal[1])
             heading_err = abs(math.atan2(math.sin(current.theta - goal[2]), math.cos(current.theta - goal[2])))
 
-            if dist_to_goal < 0.5 and heading_err < math.radians(20):
+            if dist_to_goal < 0.4 and heading_err < math.radians(25):
                 self.get_logger().info("Goal reached!")
                 self.get_logger().info(f"Expansions: {expansions}, Open set size: {len(self.open_set_)}, Closed set size: {len(self.closed_set_)}")
 
@@ -345,8 +337,10 @@ class AStarNode(Node):
                     else:
                         reverse_cost = 0
                         state = 1
-
-                    h_cost = max(self.heuristic_cost(x_new, y_new), self.euler_plus_heading(x_new, y_new, theta_new))
+                    if dist_to_goal >= 1.0:
+                        h_cost = self.heuristic_cost(x_new, y_new)
+                    else:
+                        h_cost = self.euler_plus_heading(x_new, y_new, theta_new)
                     g_cost = current.g + self.dt_ * (abs(v) + abs(w)) + reverse_cost + c
 
                     new_node = node_state(x_new, y_new, theta_new, v, w, g_cost, current, state)

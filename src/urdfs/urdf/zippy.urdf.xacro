@@ -104,12 +104,7 @@
         <origin xyz="0 0 ${chassis_z}" rpy="0 0 0"/>
     </joint>
 
-    <!-- Wheels: high longitudinal (rolling-direction) friction, matching the
-         original tuning. Skid-steer relies on lateral wheel scrub to turn,
-         so mu2 could be tuned lower than mu1 for more realistic slip - left
-         as-is here to match the previous friction tuning; revisit if the
-         sim turning behavior looks wrong. -->
-    <xacro:macro name="wheel_friction" params="link">
+    <!-- <xacro:macro name="wheel_friction" params="link">
         <gazebo reference="${link}">
             <mu1>1000000000000000.0</mu1>
             <mu2>1000000000000000.0</mu2>
@@ -124,7 +119,7 @@
     <xacro:wheel_friction link="front_left_wheel" />
     <xacro:wheel_friction link="front_right_wheel" />
     <xacro:wheel_friction link="rear_left_wheel" />
-    <xacro:wheel_friction link="rear_right_wheel" />
+    <xacro:wheel_friction link="rear_right_wheel" /> -->
 
     <gazebo>
         <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
@@ -132,11 +127,11 @@
         </plugin>
     </gazebo>
 
-    <gazebo>
+    <!-- <gazebo>
         <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
         <render_engine>ogre2</render_engine>
         </plugin>
         <plugin name='gz::sim::systems::Imu' filename='gz-sim-imu-system'/>
-    </gazebo>
+    </gazebo> -->
 
 </robot>

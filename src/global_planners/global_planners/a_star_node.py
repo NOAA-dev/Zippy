@@ -99,7 +99,7 @@ class AStarNode(Node):
 
 
         # Load PGM map
-        map_path = "/home/chirag/zippy/src/program_bringup/maps/small_house/map.pgm"
+        map_path = "/home/chirag/zippy/src/program_bringup/maps/object_avoider/map.pgm"
 
         pgm_map = cv2.imread(map_path, cv2.IMREAD_GRAYSCALE)
 
@@ -121,8 +121,8 @@ class AStarNode(Node):
 
         # EXACT values from map.yaml
         self.map_resolution_ = 0.05
-        self.map_origin_x_ = -12.5
-        self.map_origin_y_ = -12.5
+        self.map_origin_x_ = -10.277
+        self.map_origin_y_ = -10.001
 
         self.get_logger().info(f"Map loaded: {self.Grid_.shape}, "f"resolution: {self.map_resolution_}, "f"origin: ({self.map_origin_x_}, {self.map_origin_y_})")
 
@@ -171,43 +171,43 @@ class AStarNode(Node):
         except TransformException as ex:
             pass
 
-    def dijkstra_heuristic(self, goal_x, goal_y):
-        h_map = np.full(self.Grid_.shape, np.inf, dtype=np.float32)
+    # def dijkstra_heuristic(self, goal_x, goal_y):
+    #     h_map = np.full(self.Grid_.shape, np.inf, dtype=np.float32)
 
-        pq = []
-        visited_set = set()
-        heapq.heappush(pq, (0.0, goal_x, goal_y))
-        h_map[goal_y, goal_x] = 0.0
-        motions = [(1, 0, 0.05), (-1, 0, 0.05), (0, 1, 0.05), (0, -1, 0.05),(1, 1, np.sqrt(2) * 0.05), (-1, -1, np.sqrt(2) * 0.05), (1, -1, np.sqrt(2) * 0.05), (-1, 1, np.sqrt(2) * 0.05)]
-        pos_x, pos_y = self.world_to_grid(self.x_pos, self.y_pos)
+    #     pq = []
+    #     visited_set = set()
+    #     heapq.heappush(pq, (0.0, goal_x, goal_y))
+    #     h_map[goal_y, goal_x] = 0.0
+    #     motions = [(1, 0, 0.05), (-1, 0, 0.05), (0, 1, 0.05), (0, -1, 0.05),(1, 1, np.sqrt(2) * 0.05), (-1, -1, np.sqrt(2) * 0.05), (1, -1, np.sqrt(2) * 0.05), (-1, 1, np.sqrt(2) * 0.05)]
+    #     pos_x, pos_y = self.world_to_grid(self.x_pos, self.y_pos)
 
-        while pq:
-            cost, x, y = heapq.heappop(pq)
-            if (x, y) in visited_set:
-                continue
-            visited_set.add((x, y))
+    #     while pq:
+    #         cost, x, y = heapq.heappop(pq)
+    #         if (x, y) in visited_set:
+    #             continue
+    #         visited_set.add((x, y))
 
-            if (x, y) == (pos_x, pos_y):
-                break
+    #         if (x, y) == (pos_x, pos_y):
+    #             break
 
-            for dx, dy, move_cost in motions:
-                nx, ny = x + dx, y + dy
-                if 0 > nx or 0 > ny or nx >= self.Grid_.shape[1] or ny >= self.Grid_.shape[0]:
-                    continue
-                if self.Grid_[ny, nx] != 0:
-                    continue
-                new_cost = cost + move_cost
-                if new_cost < h_map[ny, nx]:
-                    h_map[ny, nx] = new_cost
-                    heapq.heappush(pq, (new_cost, nx, ny))
+    #         for dx, dy, move_cost in motions:
+    #             nx, ny = x + dx, y + dy
+    #             if 0 > nx or 0 > ny or nx >= self.Grid_.shape[1] or ny >= self.Grid_.shape[0]:
+    #                 continue
+    #             if self.Grid_[ny, nx] != 0:
+    #                 continue
+    #             new_cost = cost + move_cost
+    #             if new_cost < h_map[ny, nx]:
+    #                 h_map[ny, nx] = new_cost
+    #                 heapq.heappush(pq, (new_cost, nx, ny))
 
-        return h_map
+    #     return h_map
 
-    def heuristic_cost(self, x, y):
-        gx, gy = self.world_to_grid(x, y)
-        if gx < 0 or gy < 0 or gx >= self.Grid_.shape[1] or gy >= self.Grid_.shape[0]:
-            return np.inf
-        return self.h_map_[gy, gx]
+    # def heuristic_cost(self, x, y):
+    #     gx, gy = self.world_to_grid(x, y)
+    #     if gx < 0 or gy < 0 or gx >= self.Grid_.shape[1] or gy >= self.Grid_.shape[0]:
+    #         return np.inf
+    #     return self.h_map_[gy, gx]
 
     def euler_plus_heading(self, x, y, theta):
         cost = np.hypot((self.Goal_[0] - x), (self.Goal_[1] - y))
@@ -338,7 +338,7 @@ class AStarNode(Node):
                         reverse_cost = 0
                         state = 1
                     if dist_to_goal >= 1.0:
-                        h_cost = self.heuristic_cost(x_new, y_new)
+                        h_cost = self.euler_plus_heading(x_new, y_new, theta_new)
                     else:
                         h_cost = self.euler_plus_heading(x_new, y_new, theta_new)
                     g_cost = current.g + self.dt_ * (abs(v) + abs(w)) + reverse_cost + c
@@ -370,7 +370,7 @@ class AStarNode(Node):
 
         t0 = time.perf_counter()
 
-        self.h_map_ = self.dijkstra_heuristic(*self.world_to_grid(goal_x, goal_y))
+        # self.h_map_ = self.dijkstra_heuristic(*self.world_to_grid(goal_x, goal_y))
 
         start = (self.x_pos, self.y_pos, self.yaw)
         goal = (goal_x, goal_y, goal_theta)

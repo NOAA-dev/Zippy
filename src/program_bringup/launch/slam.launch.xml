@@ -5,7 +5,7 @@
 
     <!-- Map path -->
     <let name="map_path"
-         value="$(find-pkg-share program_bringup)/maps/small_house/map.yaml"/>
+         value="$(find-pkg-share program_bringup)/maps/object_avoider/map.yaml"/>
 
     <!-- SLAM configuration -->
     <let name="slam_config"

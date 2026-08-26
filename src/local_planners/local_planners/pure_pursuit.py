@@ -43,13 +43,13 @@ class PurePursuitNode(Node):
         self.declare_parameter("min_lookahead", 0.5)
         self.declare_parameter("max_lookahead", 1.5)
         self.declare_parameter("k_lookahead", 0.3)
-        self.declare_parameter("base_velocity", 0.5)
+        self.declare_parameter("base_velocity", 0.8)
         self.declare_parameter("min_velocity", 0.1)
         self.declare_parameter("max_angular_vel", 1.0)
         self.declare_parameter("tf_timeout_sec", 0.5)
         
-        self.declare_parameter("avoid_start_distance", 1.0)
-        self.declare_parameter("avoid_stop_distance", 0.4)
+        self.declare_parameter("avoid_start_distance", 0.3)
+        self.declare_parameter("avoid_stop_distance", 0.2)
         self.declare_parameter("clear_default", 10.0)
 
         self.declare_parameter("front_clearance_offset", 0.3)   

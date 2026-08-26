@@ -5,6 +5,7 @@ import math
 import cv2
 import heapq
 import time
+from skimage.graph import MCP_Geometric
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.duration import Duration
 from nav_msgs.msg import Path
@@ -41,8 +42,12 @@ class AStarNode(Node):
         self.declare_parameter("footprintlength", 0.6)
         self.declare_parameter("footprintwidth", 0.45)
         self.declare_parameter("footprintmargin", 0.05)
-        self.declare_parameter("search_resolution", 0.4)
-        self.declare_parameter("search_theta_bins", 10)
+        self.declare_parameter("search_resolution", 0.6)
+        self.declare_parameter("search_theta_bins", 8)
+
+        self.declare_parameter("heading_cost_weight", 0.5)
+        self.declare_parameter("clearance_cost_weight", 0.2)
+        self.declare_parameter("reverse_move_penalty", 0.3)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value
@@ -54,16 +59,20 @@ class AStarNode(Node):
 
         self.search_resolution_ = self.get_parameter("search_resolution").value
         self.search_theta_bins_ = self.get_parameter("search_theta_bins").value
+        self.heading_cost_weight = self.get_parameter("heading_cost_weight").value
+        self.clearance_cost_weight = self.get_parameter("clearance_cost_weight").value
+        self.reverse_move_penalty = self.get_parameter("reverse_move_penalty").value
 
         # system parameters
-        self.dt_ = 0.6
+        self.dt_ = 1.0
 
         self.velocity_primitives_ = [
             0.8,
             0.0,
             -0.5
         ]
-        self.angular_vel_primitives = np.linspace(-np.deg2rad(60), np.deg2rad(60), 5).tolist()
+
+        self.angular_vel_primitives = np.linspace(-np.deg2rad(60), np.deg2rad(60), 3).tolist()
 
         ###############################
         self.x_pos = 0.0
@@ -172,36 +181,10 @@ class AStarNode(Node):
             pass
 
     def dijkstra_heuristic(self, goal_x, goal_y):
-        h_map = np.full(self.Grid_.shape, np.inf, dtype=np.float32)
-
-        pq = []
-        visited_set = set()
-        heapq.heappush(pq, (0.0, goal_x, goal_y))
-        h_map[goal_y, goal_x] = 0.0
-        motions = [(1, 0, 0.05), (-1, 0, 0.05), (0, 1, 0.05), (0, -1, 0.05),(1, 1, np.sqrt(2) * 0.05), (-1, -1, np.sqrt(2) * 0.05), (1, -1, np.sqrt(2) * 0.05), (-1, 1, np.sqrt(2) * 0.05)]
-        pos_x, pos_y = self.world_to_grid(self.x_pos, self.y_pos)
-
-        while pq:
-            cost, x, y = heapq.heappop(pq)
-            if (x, y) in visited_set:
-                continue
-            visited_set.add((x, y))
-
-            if (x, y) == (pos_x, pos_y):
-                break
-
-            for dx, dy, move_cost in motions:
-                nx, ny = x + dx, y + dy
-                if 0 > nx or 0 > ny or nx >= self.Grid_.shape[1] or ny >= self.Grid_.shape[0]:
-                    continue
-                if self.Grid_[ny, nx] != 0:
-                    continue
-                new_cost = cost + move_cost
-                if new_cost < h_map[ny, nx]:
-                    h_map[ny, nx] = new_cost
-                    heapq.heappush(pq, (new_cost, nx, ny))
-
-        return h_map
+        cost_array = np.where(self.Grid_ == 0, 1.0, np.inf).astype(np.float64)
+        mcp = MCP_Geometric(cost_array, fully_connected=True)
+        costs, _ = mcp.find_costs([(goal_y, goal_x)])
+        return (costs * self.map_resolution_).astype(np.float32)
 
     def heuristic_cost(self, x, y):
         gx, gy = self.world_to_grid(x, y)
@@ -211,7 +194,8 @@ class AStarNode(Node):
 
     def euler_plus_heading(self, x, y, theta):
         cost = np.hypot((self.Goal_[0] - x), (self.Goal_[1] - y))
-        cost = cost + np.arctan2(np.sin(self.Goal_[2] - theta), np.cos(self.Goal_[2] - theta))
+        heading_err = abs(np.arctan2(np.sin(self.Goal_[2] - theta), np.cos(self.Goal_[2] - theta)))
+        cost = cost + self.heading_cost_weight * heading_err
         return cost
 
     def discretize(self, x_grid, y_grid, theta):
@@ -263,13 +247,13 @@ class AStarNode(Node):
         if np.any(self.Grid_[gy[in_bounds], gx[in_bounds]] != 0):
             return True, np.inf
 
-        clearance = self.clearance_map[gy[in_bounds], gx[in_bounds]]
+        clearance = self.clearance_map[gy[in_bounds], gx[in_bounds]] * self.map_resolution_
         min_clearance = float(np.min(clearance)) if clearance.size else 0.0
 
         if min_clearance <= 0.0:
             return False, np.inf
 
-        return False, 4.0 / min_clearance
+        return False, self.clearance_cost_weight / min_clearance
 
     def collision_check(self, x, y, theta):
         collision, _ = self._pose_footprint_status(x, y, theta)
@@ -332,7 +316,7 @@ class AStarNode(Node):
                         continue
 
                     if v < 0.0:
-                        reverse_cost = 10
+                        reverse_cost = self.reverse_move_penalty
                         state = -1
                     else:
                         reverse_cost = 0
@@ -341,7 +325,7 @@ class AStarNode(Node):
                         h_cost = self.heuristic_cost(x_new, y_new)
                     else:
                         h_cost = self.euler_plus_heading(x_new, y_new, theta_new)
-                    g_cost = current.g + self.dt_ * (abs(v) + abs(w)) + reverse_cost + c
+                    g_cost = current.g + self.dt_ * abs(v) + self.heading_cost_weight * self.dt_ * abs(w) + reverse_cost + c
 
                     new_node = node_state(x_new, y_new, theta_new, v, w, g_cost, current, state)
                     new_key = self.discretize(x_new, y_new, theta_new)

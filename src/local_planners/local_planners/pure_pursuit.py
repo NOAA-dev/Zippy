@@ -44,7 +44,7 @@ class PurePursuitNode(Node):
         self.declare_parameter("max_lookahead", 1.5)
         self.declare_parameter("k_lookahead", 0.3)
         self.declare_parameter("base_velocity", 0.8)
-        self.declare_parameter("min_velocity", 0.1)
+        self.declare_parameter("min_velocity", 0.05)
         self.declare_parameter("max_angular_vel", 1.0)
         self.declare_parameter("tf_timeout_sec", 0.5)
 

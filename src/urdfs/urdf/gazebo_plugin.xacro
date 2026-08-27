@@ -9,7 +9,7 @@
             <left_joint>base_rearleft_wheel_joint</left_joint>
             <right_joint>base_frontright_wheel_joint</right_joint>
             <right_joint>base_rearright_wheel_joint</right_joint>
-            <wheel_separation>0.5</wheel_separation>
+            <wheel_separation>0.51</wheel_separation>
             <wheel_radius>0.1</wheel_radius>
             <frame_id>odom</frame_id>
             <child_frame_id>zippy</child_frame_id>

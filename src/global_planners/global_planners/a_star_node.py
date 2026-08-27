@@ -37,7 +37,7 @@ class AStarNode(Node):
         path_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         self.computing = False
 
-        self.declare_parameter("wheelseperation", 0.5)
+        self.declare_parameter("wheelseperation", 0.51)
         self.declare_parameter("wheelradius", 0.1)
         self.declare_parameter("footprintlength", 0.6)
         self.declare_parameter("footprintwidth", 0.45)

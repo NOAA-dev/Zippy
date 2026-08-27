@@ -14,11 +14,11 @@
     <xacro:property name="chassis_length" value="0.6" />
     <xacro:property name="chassis_width" value="0.45" />
     <xacro:property name="chassis_height" value="0.25" />
-    <xacro:property name="chassis_mass" value="25.0" />
+    <xacro:property name="chassis_mass" value="5.0" />
 
     <xacro:property name="wheel_radius" value="0.1" />
     <xacro:property name="wheel_thickness" value="0.06" />
-    <xacro:property name="wheel_mass" value="1.5" />
+    <xacro:property name="wheel_mass" value="0.25" />
 
     <!-- Distance between left/right wheel centers and front/rear wheel centers -->
     <xacro:property name="track_width" value="0.5" />

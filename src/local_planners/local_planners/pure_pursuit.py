@@ -34,7 +34,7 @@ class PurePursuitNode(Node):
         self.path_x = []
         self.path_y = []
         self.path_theta = []
-        self.path_mode = []
+        self.path_cumdist = []
         self.prev_header_stamp = None
         self.last_nearest_index = 0
         self.path_sub = self.create_subscription(Path, "/path", self.path_callback, path_qos)
@@ -47,19 +47,16 @@ class PurePursuitNode(Node):
         self.declare_parameter("min_velocity", 0.1)
         self.declare_parameter("max_angular_vel", 1.0)
         self.declare_parameter("tf_timeout_sec", 0.5)
+
+        self.declare_parameter("velocity_horizon_step_distance", 0.4) 
+        self.declare_parameter("velocity_ramp_zone_distance", 1.5)   
         
-        self.declare_parameter("avoid_start_distance", 0.3)
-        self.declare_parameter("avoid_stop_distance", 0.2)
+        self.declare_parameter("avoid_start_distance", 0.6)
+        self.declare_parameter("avoid_stop_distance", 0.25)
         self.declare_parameter("clear_default", 10.0)
 
         self.declare_parameter("front_clearance_offset", 0.3)   
-        self.declare_parameter("side_clearance_offset", 0.225)  
-        self.declare_parameter("rear_clearance_offset", 0.3)    
-
-        self.declare_parameter("rotate_in_place_position_tol", 0.03)
-        self.declare_parameter("rotate_in_place_heading_tol_deg", 5.0)
-        self.declare_parameter("rotate_in_place_kp", 1.5)
-        self.declare_parameter("reverse_speed_scale", 0.6) 
+        self.declare_parameter("side_clearance_offset", 0.225)
 
         self.lookahead_distance = self.get_parameter("lookahead_distance").value
         self.min_lookahead = self.get_parameter("min_lookahead").value
@@ -69,16 +66,13 @@ class PurePursuitNode(Node):
         self.min_velocity = self.get_parameter("min_velocity").value
         self.max_angular_vel = self.get_parameter("max_angular_vel").value
         self.tf_timeout_sec = self.get_parameter("tf_timeout_sec").value
+        self.velocity_horizon_step_distance = self.get_parameter("velocity_horizon_step_distance").value
+        self.velocity_ramp_zone_distance = self.get_parameter("velocity_ramp_zone_distance").value
         self.avoid_start_distance = self.get_parameter("avoid_start_distance").value
         self.avoid_stop_distance = self.get_parameter("avoid_stop_distance").value
         self.clear_default = self.get_parameter("clear_default").value
         self.front_clearance_offset = self.get_parameter("front_clearance_offset").value
         self.side_clearance_offset = self.get_parameter("side_clearance_offset").value
-        self.rear_clearance_offset = self.get_parameter("rear_clearance_offset").value
-        self.rotate_in_place_position_tol = self.get_parameter("rotate_in_place_position_tol").value
-        self.rotate_in_place_heading_tol = np.deg2rad(self.get_parameter("rotate_in_place_heading_tol_deg").value)
-        self.rotate_in_place_kp = self.get_parameter("rotate_in_place_kp").value
-        self.reverse_speed_scale = self.get_parameter("reverse_speed_scale").value
 
         self.publisher_ = self.create_publisher(Twist, "/autonomous_cmd_vel", 10)
         self.timer_ = self.create_timer(0.02, self.pure_pursuit)  # 50 Hz
@@ -86,7 +80,6 @@ class PurePursuitNode(Node):
         self.front_clearance = self.clear_default
         self.right_clearance = self.clear_default
         self.left_clearance = self.clear_default
-        self.rear_clearance = self.clear_default
         self.subscriber_ = self.create_subscription(LaserScan, "/scan", self.laser_callback, 10)
 
     # ------------------------------------------------------------------
@@ -116,13 +109,11 @@ class PurePursuitNode(Node):
         front_range = []
         right_range = []
         left_range = []
-        rear_range = []
 
         angle = angle_min
         front_angle = np.deg2rad(35)
         left_angle = np.deg2rad(120)
         right_angle = np.deg2rad(-120)
-        rear_angle = np.deg2rad(150) 
         for r in ranges:
             if math.isfinite(r):
                 if right_angle <= angle <= -front_angle:
@@ -131,19 +122,15 @@ class PurePursuitNode(Node):
                     front_range.append(r)
                 if front_angle <= angle <= left_angle:
                     left_range.append(r)
-                if angle >= rear_angle or angle <= -rear_angle:
-                    rear_range.append(r)
             angle += angle_inc
 
         front_min = sum(sorted(front_range)[:10]) / min(len(front_range), 10) if front_range else None
         right_min = sum(sorted(right_range)[:10]) / min(len(right_range), 10) if right_range else None
         left_min = sum(sorted(left_range)[:10]) / min(len(left_range), 10) if left_range else None
-        rear_min = sum(sorted(rear_range)[:10]) / min(len(rear_range), 10) if rear_range else None
 
         self.front_clearance = max(0.0, front_min - self.front_clearance_offset) if front_min is not None else self.clear_default
         self.right_clearance = max(0.0, right_min - self.side_clearance_offset) if right_min is not None else self.clear_default
         self.left_clearance = max(0.0, left_min - self.side_clearance_offset) if left_min is not None else self.clear_default
-        self.rear_clearance = max(0.0, rear_min - self.rear_clearance_offset) if rear_min is not None else self.clear_default
 
     # ------------------------------------------------------------------
     def path_callback(self, msg: Path):
@@ -157,7 +144,7 @@ class PurePursuitNode(Node):
         self.path_x = []
         self.path_y = []
         self.path_theta = []
-        self.path_mode = [] 
+        self.path_cumdist = [] 
         self.last_nearest_index = 0
 
         for pose_stamped in msg.poses:
@@ -169,31 +156,23 @@ class PurePursuitNode(Node):
             self.path_y.append(y)
             self.path_theta.append(theta)
 
-        self.path_mode = self.classify_segments(self.path_x, self.path_y, self.path_theta)
+        self.path_cumdist = self._compute_cumdist(self.path_x, self.path_y)
 
-    def classify_segments(self, xs, ys, thetas):
-        modes = []
-        for i in range(len(xs) - 1):
-            dx = xs[i + 1] - xs[i]
-            dy = ys[i + 1] - ys[i]
-            disp = math.hypot(dx, dy)
-            if disp < self.rotate_in_place_position_tol:
-                modes.append("rotate")
-                continue
-            along = math.cos(thetas[i]) * dx + math.sin(thetas[i]) * dy
-            modes.append("forward" if along >= 0.0 else "reverse")
-        return modes
+    def _compute_cumdist(self, xs, ys):
+        cumdist = [0.0] * len(xs)
+        for i in range(1, len(xs)):
+            cumdist[i] = cumdist[i - 1] + math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1])
+        return cumdist
 
-    def _segment_mode(self, index):
-        if not self.path_mode:
-            return "forward"
-        return self.path_mode[min(index, len(self.path_mode) - 1)]
-
-    def rotate_run_end(self, index):
-        i = index
-        while i < len(self.path_mode) and self.path_mode[i] == "rotate":
-            i += 1
-        return min(i, len(self.path_x) - 1)
+    def _index_at_distance_ahead(self, start_index, distance):
+        n = len(self.path_cumdist)
+        if start_index >= n - 1:
+            return n - 1
+        target = self.path_cumdist[start_index] + distance
+        for i in range(start_index, n):
+            if self.path_cumdist[i] >= target:
+                return i
+        return n - 1
 
     # ------------------------------------------------------------------
     def find_nearest_index(self, x, y):
@@ -214,19 +193,27 @@ class PurePursuitNode(Node):
 
     # ------------------------------------------------------------------
     def compute_velocity(self, index):
-        lookahead_step = 1
         n = len(self.path_x)
+        total_dist = self.path_cumdist[-1] if self.path_cumdist else 0.0
+        remaining_dist = total_dist - self.path_cumdist[index] if index < n else 0.0
 
-        remaining = n - 1 - index
-        ramp_zone = 7
-        if remaining <= 0:
+        if index >= n - 1 or remaining_dist <= 0.0:
             return 0.0
 
-        if index + 3 * lookahead_step >= n:
-            v = self.base_velocity * min(remaining / ramp_zone, 1.0)
-            return max(v, self.min_velocity if remaining > 0 else 0.0)
+        if remaining_dist < self.velocity_ramp_zone_distance:
+            v = self.base_velocity * min(remaining_dist / self.velocity_ramp_zone_distance, 1.0)
+            return max(v, self.min_velocity)
 
-        i1, i2, i3, i4 = index, index + lookahead_step, index + 2 * lookahead_step, index + 3 * lookahead_step
+        step = self.velocity_horizon_step_distance
+        i1 = index
+        i2 = self._index_at_distance_ahead(i1, step)
+        i3 = self._index_at_distance_ahead(i2, step)
+        i4 = self._index_at_distance_ahead(i3, step)
+
+        if i2 == i1 or i3 == i2 or i4 == i3:
+            v = self.base_velocity * min(remaining_dist / self.velocity_ramp_zone_distance, 1.0)
+            return max(v, self.min_velocity)
+
         d_theta1 = math.atan2(self.path_y[i2] - self.path_y[i1], self.path_x[i2] - self.path_x[i1])
         d_theta2 = math.atan2(self.path_y[i3] - self.path_y[i2], self.path_x[i3] - self.path_x[i2])
         d_theta3 = math.atan2(self.path_y[i4] - self.path_y[i3], self.path_x[i4] - self.path_x[i3])
@@ -239,9 +226,6 @@ class PurePursuitNode(Node):
 
         v = self.base_velocity - reduction * (self.base_velocity - self.min_velocity)
         v = max(v, self.min_velocity)
-
-        if remaining < ramp_zone:
-            v *= remaining / ramp_zone
 
         return v
 
@@ -256,16 +240,8 @@ class PurePursuitNode(Node):
             return
 
         nearest_index = self.find_nearest_index(self.x_pos, self.y_pos)
-        mode = self._segment_mode(nearest_index)
 
-        if mode == "rotate":
-            self.do_rotate_in_place(nearest_index)
-            return
-
-        reverse = (mode == "reverse")
-
-        raw_v = self.compute_velocity(nearest_index) 
-        target_v = -raw_v * self.reverse_speed_scale if reverse else raw_v
+        target_v = self.compute_velocity(nearest_index)
         self.v += (target_v - self.v) * 0.7
 
         L_d = np.clip(self.lookahead_distance + self.k_lookahead * abs(self.v), self.min_lookahead, self.max_lookahead)
@@ -292,11 +268,10 @@ class PurePursuitNode(Node):
                 self.publisher_.publish(Twist())
                 return
 
-        primary_clearance = self.rear_clearance if reverse else self.front_clearance
-        v_scale = np.clip((primary_clearance - self.avoid_stop_distance)/max(self.avoid_start_distance - self.avoid_stop_distance, 1e-6), 0.0, 1.0)
+        v_scale = np.clip((self.front_clearance - self.avoid_stop_distance)/max(self.avoid_start_distance - self.avoid_stop_distance, 1e-6), 0.0, 1.0)
         self.v *= v_scale
 
-        nearest_clearance = min(primary_clearance, self.left_clearance, self.right_clearance)
+        nearest_clearance = min(self.front_clearance, self.left_clearance, self.right_clearance)
         if nearest_clearance < self.avoid_start_distance:
             urgency = np.clip((self.avoid_start_distance - nearest_clearance)/max(self.avoid_start_distance - self.avoid_stop_distance, 1e-6),0.0, 1.0)
             clearance_error = self.left_clearance - self.right_clearance
@@ -304,26 +279,6 @@ class PurePursuitNode(Node):
             omega = (1 - urgency) * omega + urgency * avoid_omega
 
         omega = float(np.clip(omega, -self.max_angular_vel, self.max_angular_vel))
-
-        msg = Twist()
-        msg.linear.x = self.v
-        msg.angular.z = omega
-        self.publisher_.publish(msg)
-
-    # ------------------------------------------------------------------
-    def do_rotate_in_place(self, nearest_index):
-        run_end = self.rotate_run_end(nearest_index)
-        target_heading = self.path_theta[run_end]
-
-        heading_err = math.atan2(math.sin(target_heading - self.yaw), math.cos(target_heading - self.yaw))
-
-        self.v += (0.0 - self.v) * 0.7
-
-        if abs(heading_err) <= self.rotate_in_place_heading_tol:
-            self.last_nearest_index = run_end
-            omega = 0.0
-        else:
-            omega = float(np.clip(self.rotate_in_place_kp * heading_err, -self.max_angular_vel, self.max_angular_vel))
 
         msg = Twist()
         msg.linear.x = self.v

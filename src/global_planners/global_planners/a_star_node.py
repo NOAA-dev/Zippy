@@ -47,7 +47,7 @@ class AStarNode(Node):
 
         self.declare_parameter("heading_cost_weight", 0.5)
         self.declare_parameter("clearance_cost_weight", 0.2)
-        self.declare_parameter("reverse_move_penalty", 0.3)
+        self.declare_parameter("reverse_move_penalty", 0.7)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value

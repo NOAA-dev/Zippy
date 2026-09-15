@@ -42,12 +42,12 @@ class AStarNode(Node):
         self.declare_parameter("footprintlength", 0.6)
         self.declare_parameter("footprintwidth", 0.45)
         self.declare_parameter("footprintmargin", 0.05)
-        self.declare_parameter("search_resolution", 0.6)
-        self.declare_parameter("search_theta_bins", 8)
+        self.declare_parameter("search_resolution", 0.4)
+        self.declare_parameter("search_theta_bins", 20)
 
         self.declare_parameter("heading_cost_weight", 0.5)
         self.declare_parameter("clearance_cost_weight", 0.2)
-        self.declare_parameter("reverse_move_penalty", 0.7)
+        self.declare_parameter("reverse_move_penalty", 10)
 
         # bot parameters
         self.L_ = self.get_parameter("wheelseperation").value
@@ -64,7 +64,7 @@ class AStarNode(Node):
         self.reverse_move_penalty = self.get_parameter("reverse_move_penalty").value
 
         # system parameters
-        self.dt_ = 1.0
+        self.dt_ = 0.5
 
         self.velocity_primitives_ = [
             0.8,
@@ -72,7 +72,7 @@ class AStarNode(Node):
             -0.5
         ]
 
-        self.angular_vel_primitives = np.linspace(-np.deg2rad(60), np.deg2rad(60), 3).tolist()
+        self.angular_vel_primitives = np.linspace(-np.deg2rad(60), np.deg2rad(60), 5).tolist()
 
         ###############################
         self.x_pos = 0.0
@@ -184,7 +184,7 @@ class AStarNode(Node):
         cost_array = np.where(self.Grid_ == 0, 1.0, np.inf).astype(np.float64)
         mcp = MCP_Geometric(cost_array, fully_connected=True)
         costs, _ = mcp.find_costs([(goal_y, goal_x)])
-        return (costs * self.map_resolution_).astype(np.float32)
+        return (costs).astype(np.float32)
 
     def heuristic_cost(self, x, y):
         gx, gy = self.world_to_grid(x, y)
@@ -196,7 +196,7 @@ class AStarNode(Node):
         cost = np.hypot((self.Goal_[0] - x), (self.Goal_[1] - y))
         heading_err = abs(np.arctan2(np.sin(self.Goal_[2] - theta), np.cos(self.Goal_[2] - theta)))
         cost = cost + self.heading_cost_weight * heading_err
-        return cost
+        return cost/self.map_resolution_
 
     def discretize(self, x_grid, y_grid, theta):
         x_idx = int((x_grid - self.map_origin_x_) / self.search_resolution_)
@@ -325,7 +325,7 @@ class AStarNode(Node):
                         h_cost = self.heuristic_cost(x_new, y_new)
                     else:
                         h_cost = self.euler_plus_heading(x_new, y_new, theta_new)
-                    g_cost = current.g + self.dt_ * abs(v) + self.heading_cost_weight * self.dt_ * abs(w) + reverse_cost + c
+                    g_cost = current.g + self.dt_ * abs(v) + self.dt_ * abs(w) + reverse_cost + c
 
                     new_node = node_state(x_new, y_new, theta_new, v, w, g_cost, current, state)
                     new_key = self.discretize(x_new, y_new, theta_new)

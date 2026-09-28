@@ -16,7 +16,7 @@ ekf_filter_node:
                     false, false, true,
                     false, false, false,
                     false, false, false,
-                    true,  false, false]
+                    false,  false, false]
 
       imu0_differential: true
       imu0_pose_use_child_frame: false

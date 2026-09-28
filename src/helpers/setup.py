@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             "cmd_relay = helpers.relay:main",
             "data_logger = helpers.data_logger:main",
+            "comparer = helpers.compare_planners:main",
         ],
     },
 )

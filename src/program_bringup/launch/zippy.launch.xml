@@ -1,7 +1,6 @@
 <launch>
 
     <include file="$(find-pkg-share program_bringup)/launch/joystick.launch.py"/>
-    <include file="$(find-pkg-share program_bringup)/launch/slam.launch.xml"/>
 
     <let name="urdf_path" value="$(find-pkg-share urdfs)/urdf/zippy.urdf.xacro"/>
     <let name="rviz_config_path" value="$(find-pkg-share urdfs)/rviz/default.rviz"/>
@@ -45,12 +44,8 @@
         <param name="use_sim_time" value="true"/>
     </node>
 
-    <!-- global_planners: A* on the validated map -->
-    <node pkg="global_planners" exec="a_star" name="a_star" output="screen">
-        <param name="use_sim_time" value="true"/>
-    </node>
 
-    <!-- local_planners: pure pursuit path tracking + integrated VFH avoidance -->
+    <!-- local_planners: point-chasing pure pursuit (goal from /goal_pose, odom frame) + reactive avoidance -->
     <node pkg="local_planners" exec="pure_pursuit" name="pure_pursuit_node" output="screen">
         <param name="use_sim_time" value="true"/>
     </node>

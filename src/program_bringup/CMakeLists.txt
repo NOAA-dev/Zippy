@@ -10,7 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 install(DIRECTORY
-  launch config world models maps
+  launch config world models
   DESTINATION share/${PROJECT_NAME}/
 )
 

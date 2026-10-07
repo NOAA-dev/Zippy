@@ -24,7 +24,6 @@
   <exec_depend>joy</exec_depend>
   <exec_depend>joy_teleop</exec_depend>
   <exec_depend>rviz2</exec_depend>
-  <exec_depend>global_planners</exec_depend>
   <exec_depend>local_planners</exec_depend>
   <exec_depend>custom_interfaces</exec_depend>
 

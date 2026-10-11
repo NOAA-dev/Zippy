@@ -40,6 +40,25 @@ class CMDRelayNode(Node):
         self.odom_msg.header.frame_id = "odom"
         self.odom_msg.child_frame_id = "zippy"
 
+        # Covariances. Zero covariance makes robot_localization treat the encoders as perfect,
+        # which would drown out LIO/IMU in the EKF. The EKF fuses only vx and vyaw from here:
+        # yaw rate on a skid-steer base is unreliable (wheel slip), so it gets a large variance.
+        self.declare_parameter("odom_var_vx", 0.0025)       # (m/s)^2
+        self.declare_parameter("odom_var_wz", 0.04)         # (rad/s)^2
+        self.declare_parameter("odom_var_pose_xy", 0.05)    # m^2 (not fused, informational)
+        self.declare_parameter("odom_var_pose_yaw", 0.1)    # rad^2 (not fused, informational)
+        pose_cov = [0.0] * 36
+        pose_cov[0] = pose_cov[7] = self.get_parameter("odom_var_pose_xy").value
+        pose_cov[35] = self.get_parameter("odom_var_pose_yaw").value
+        twist_cov = [0.0] * 36
+        twist_cov[0] = self.get_parameter("odom_var_vx").value
+        twist_cov[7] = 0.01
+        twist_cov[35] = self.get_parameter("odom_var_wz").value
+        for k in (14, 21, 28):                      # z, roll, pitch: not observed
+            pose_cov[k] = twist_cov[k] = 1e6
+        self.odom_msg.pose.covariance = pose_cov
+        self.odom_msg.twist.covariance = twist_cov
+
         self.joy_subscriber_ = self.create_subscription(Twist,"/cmd_vel_unstamped",self.genrate_cmd_vel,10)
         self.joy_in_subscriber_ = self.create_subscription(TwistStamped,"/joystick_input/stamped",self.joy_in_callback,10)
         self.subscriber_ = self.create_subscription(JointState,"joint_states",self.position_callback,10)

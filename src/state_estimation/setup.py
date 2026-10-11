@@ -21,6 +21,9 @@ setup(
     entry_points={
         'console_scripts': [
             'lio_node = state_estimation.lio_node:main',
+            'imu_odom = state_estimation.imu_odom:main',
+            'odom_viz = state_estimation.odom_viz:main',
+            'plot_odometry = state_estimation.plot_odometry:main',
             'lio_synthetic_eval = state_estimation.synthetic_eval:main',
         ],
     },

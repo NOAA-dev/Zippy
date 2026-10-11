@@ -20,14 +20,7 @@ from sensor_msgs.msg import Imu, LaserScan
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from .lio_core import Lio2D, LioParams, scan_to_points
-
-
-def stamp_to_sec(stamp):
-    return stamp.sec + stamp.nanosec * 1e-9
-
-
-def yaw_from_quat(q):
-    return math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+from .utils import stamp_to_sec, yaw_from_quat
 
 
 class LioNode(Node):

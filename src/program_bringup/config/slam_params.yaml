@@ -1,0 +1,40 @@
+# slam_toolbox online async mapping (no initial map; map grows as the robot explores)
+slam_toolbox:
+  ros__parameters:
+    # frames / topics
+    odom_frame: odom
+    map_frame: map
+    base_frame: zippy
+    scan_topic: /scan
+    mode: mapping
+
+    use_map_saver: true
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02
+    map_update_interval: 2.0
+    resolution: 0.05
+    min_laser_range: 0.0
+    max_laser_range: 12.0          # set to ~ your lidar's usable range
+    minimum_time_interval: 0.5
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000
+
+    # only add a scan when the robot has actually moved
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+
+    # matching / loop closure
+    use_scan_matching: true
+    use_scan_barycenter: true
+    do_loop_closing: true
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45

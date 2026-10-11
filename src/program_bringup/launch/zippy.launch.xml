@@ -60,9 +60,15 @@
         <param name="use_sim_time" value="true"/>
     </node>
 
-    <!-- local_planners: point-chasing pure pursuit (goal from /goal_pose, odom frame) + reactive avoidance -->
+    <!-- OLD local planner: replaced by slam_toolbox + Nav2 below. Do NOT run both (both listen on /goal_pose).
     <node pkg="local_planners" exec="pure_pursuit" name="pure_pursuit_node" output="screen">
         <param name="use_sim_time" value="true"/>
     </node>
+    -->
+
+    <!-- Mapless navigation: slam_toolbox (map -> odom) + Nav2 -> /autonomous_cmd_vel -->
+    <include file="$(find-pkg-share program_bringup)/launch/navigation.launch.py">
+        <arg name="use_sim_time" value="true"/>
+    </include>
 
 </launch>
